@@ -1,0 +1,30 @@
+<launch>
+
+  <!-- these are the arguments you can pass this launch file, for example paused:=true -->
+  <arg name="paused" default="false"/>
+  <arg name="use_sim_time" default="true"/>
+  <arg name="gui" default="true"/>
+  <arg name="headless" default="false"/>
+  <arg name="debug" default="false"/> 
+  <arg name="verbose" default="false"/>
+
+  <!-- We resume the logic in empty_world.launch, changing only the name of the world to be launched -->
+  <include file="$(find gazebo_ros)/launch/empty_world.launch">
+    <arg name="world_name" value="$(find robocon25_sim)/worlds/robocon25.world"/>
+    <arg name="verbose" 	value="true"/>
+    <arg name="paused"		value="false"/>
+  </include>
+  
+  <!-- Spawn a robot into Gazebo -->
+  <node name="spawn_urdf" pkg="gazebo_ros" type="spawn_model" args="-file $(find robocon25_sim)/models/robot.model -urdf -model robot" />
+
+  <!-- 红球放置位置 -->
+  <arg name="red_ball_x" default="1.0"/>
+  <node name="red_ball" pkg="gazebo_ros" type="spawn_model" args="-file $(find wpr_simulation)/models/balls/red_ball.model -x $(arg red_ball_x) -urdf -model red_ball" />
+
+  <!-- 启动距离标定节点 -->
+  <node name="calibrate_dist" pkg="robocon_localization" type="calibrate_dist" output="screen"/>
+
+</launch>
+
+
