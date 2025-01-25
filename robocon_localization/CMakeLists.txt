@@ -252,3 +252,14 @@ add_dependencies(load_lines_map ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXP
 target_link_libraries(load_lines_map
   ${catkin_LIBRARIES} ${OpenCV_LIBS}
 )
+
+add_executable(loc_sidelines
+  src/loc_sidelines.cpp
+  src/utility/distance_lookup.cpp
+  src/utility/lines_map.cpp
+  src/utility/lines_matcher.cpp
+)
+add_dependencies(loc_sidelines ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+target_link_libraries(loc_sidelines
+  ${catkin_LIBRARIES} ${OpenCV_LIBS}
+)
