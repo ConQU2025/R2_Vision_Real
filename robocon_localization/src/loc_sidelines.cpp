@@ -16,16 +16,13 @@ static float counter_y = 0;
 static float counter_yaw = 0;
 static cv::Mat field_image;
 static cv::Mat monitor_image;
+static cv::Mat image_lines_all;
+static cv::Mat image_lines_map;
+static cv::Mat image_red_map;
+static cv::Mat image_blue_map;
 
 void imageCallback(const sensor_msgs::ImageConstPtr& msg) 
 {
-    static int count = 0;
-    count++;
-    if(count < 1)
-        return;
-    else
-        count = 0;
-    
     cv_bridge::CvImagePtr cv_ptr;
     try {
         cv_ptr = cv_bridge::toCvCopy(msg, sensor_msgs::image_encodings::BGR8);
@@ -40,7 +37,6 @@ void imageCallback(const sensor_msgs::ImageConstPtr& msg)
     image_scope = Scalar(0, 0, 0);  // 将背景设置为黑色
     Mat image_lines = Mat::zeros(image_raw.size(), CV_8UC1);
     Mat image_corrected = image_lines.clone();
-    // 添加红线和蓝线检测的图像
     Mat image_red = Mat::zeros(image_raw.size(), CV_8UC1);
     Mat image_blue = Mat::zeros(image_raw.size(), CV_8UC1);
     Mat image_sideline_red = image_lines.clone();
@@ -147,11 +143,6 @@ void imageCallback(const sensor_msgs::ImageConstPtr& msg)
         }
     }
 
-    // 读取场线模板
-    cv::Mat image_lines_map = lines_map.getLinesMap();
-    cv::Mat image_red_map = lines_map.getRedMap();
-    cv::Mat image_blue_map = lines_map.getBlueMap();
-
     // 将 image_corrected 顺时针旋转90度
     cv::Mat rotated_image;
     cv::rotate(image_corrected, rotated_image, cv::ROTATE_90_CLOCKWISE);
@@ -160,8 +151,8 @@ void imageCallback(const sensor_msgs::ImageConstPtr& msg)
     cv::Point2f img_center(rotated_image.cols/2.0f, rotated_image.rows/2.0f);
     
     // 添加缩放比例变量
-    const float scale_factor = 2.5f;
-    const float scale_sideline = 2.45f;
+    const float scale_factor_x = 2.4f;  // X方向缩放因子
+    const float scale_factor_y = 2.3f;  // Y方向缩放因子
     // 计算横向偏移量，使两个图像中心对齐
     float x_offset = (image_lines_map.cols - rotated_image.cols) / 2.0f;
     // 计算纵向偏移量
@@ -185,20 +176,20 @@ void imageCallback(const sensor_msgs::ImageConstPtr& msg)
         for(int x = 0; x < rotated_image.cols; x++) {
             // 处理白点
             if(rotated_image.at<uchar>(y,x) == 255) {
-                float scaled_x = img_center.x + (x - img_center.x) * scale_factor + x_offset;
-                float scaled_y = img_center.y + (y - img_center.y) * scale_factor + y_offset;
+                float scaled_x = img_center.x + (x - img_center.x) * scale_factor_x + x_offset;
+                float scaled_y = img_center.y + (y - img_center.y) * scale_factor_y + y_offset;
                 white_points.push_back(cv::Point2f(scaled_x, scaled_y));
             }
             // 处理红点
             if(rotated_red.at<uchar>(y,x) == 255) {
-                float scaled_x = img_center.x + (x - img_center.x) * scale_sideline + x_offset;
-                float scaled_y = img_center.y + (y - img_center.y) * scale_sideline + y_offset;
+                float scaled_x = img_center.x + (x - img_center.x) * scale_factor_x + x_offset;
+                float scaled_y = img_center.y + (y - img_center.y) * scale_factor_y + y_offset;
                 red_points.push_back(cv::Point2f(scaled_x, scaled_y));
             }
             // 处理蓝点
             if(rotated_blue.at<uchar>(y,x) == 255) {
-                float scaled_x = img_center.x + (x - img_center.x) * scale_sideline + x_offset;
-                float scaled_y = img_center.y + (y - img_center.y) * scale_sideline + y_offset;
+                float scaled_x = img_center.x + (x - img_center.x) * scale_factor_x + x_offset;
+                float scaled_y = img_center.y + (y - img_center.y) * scale_factor_y + y_offset;
                 blue_points.push_back(cv::Point2f(scaled_x, scaled_y));
             }
         }
@@ -222,8 +213,8 @@ void imageCallback(const sensor_msgs::ImageConstPtr& msg)
     cv::Point2f line_center((red_avg.x + blue_avg.x) / 2, (red_avg.y + blue_avg.y) / 2);
     // printf("line_center: (%.2f, %.2f), angle: %.2f\n", line_center.x, line_center.y, angle);
     counter_yaw = -90 - angle;
-
-    // 在一定范围内搜索最佳匹配
+    
+    // [1]先使用红蓝边线进行初次匹配
     cv::Point2f center(img_center.x + x_offset, img_center.y + y_offset);
 
     int last_max_sum = 0;
@@ -244,7 +235,6 @@ void imageCallback(const sensor_msgs::ImageConstPtr& msg)
         last_max_sum = match_result.max_sum;
     }
 
-    // [1]先使用红蓝边线进行初次匹配
     float rad = (counter_yaw) * CV_PI / 180.0;
     
     // 初始化范围统计变量
@@ -323,8 +313,9 @@ void imageCallback(const sensor_msgs::ImageConstPtr& msg)
     }
 
     // 显示匹配效果
-    cv::Mat image_match_result = lines_map.getRawImage();
+    cv::Mat image_match_result = image_lines_all.clone();
     // cv::Mat image_match_result = image_lines_map.clone();
+    // cv::Mat image_match_result = image_red_map.clone();
     // cv::Mat image_match_result = cv::Mat::zeros(image_red_map.size(), CV_8UC1);
     // for(int y = 0; y < image_match_result.rows; y++) {
     //     for(int x = 0; x < image_match_result.cols; x++) {
@@ -332,7 +323,6 @@ void imageCallback(const sensor_msgs::ImageConstPtr& msg)
     //                                               image_blue_map.at<uchar>(y,x));
     //     }
     // }
-
     // cv::cvtColor(image_match_result, image_match_result, cv::COLOR_GRAY2BGR);
     
     // printf("counter_x: %.2f, counter_y: %.2f, counter_yaw: %.2f\n", counter_x, counter_y, counter_yaw);
@@ -377,22 +367,22 @@ void imageCallback(const sensor_msgs::ImageConstPtr& msg)
     }
     
     // 将各种线条标记到 image_scope 上
-    for(int y = 0; y < image_scope.rows; y++) {
-        for(int x = 0; x < image_scope.cols; x++) {
-            if(image_corrected.at<uchar>(y,x) == 255) {
-                // 白色点表示白线
-                circle(image_scope, Point(x,y), 2, Scalar(255,255,255), -1);
-            }
-            if(image_sideline_red.at<uchar>(y,x) == 255) {
-                // 红色点表示红线
-                circle(image_scope, Point(x,y), 2, Scalar(0,0,255), -1);
-            }
-            if(image_sideline_blue.at<uchar>(y,x) == 255) {
-                // 蓝色点表示蓝线
-                circle(image_scope, Point(x,y), 2, Scalar(255,0,0), -1);
-            }
-        }
-    }
+    // for(int y = 0; y < image_scope.rows; y++) {
+    //     for(int x = 0; x < image_scope.cols; x++) {
+    //         if(image_corrected.at<uchar>(y,x) == 255) {
+    //             // 白色点表示白线
+    //             circle(image_scope, Point(x,y), 2, Scalar(255,255,255), -1);
+    //         }
+    //         if(image_sideline_red.at<uchar>(y,x) == 255) {
+    //             // 红色点表示红线
+    //             circle(image_scope, Point(x,y), 2, Scalar(0,0,255), -1);
+    //         }
+    //         if(image_sideline_blue.at<uchar>(y,x) == 255) {
+    //             // 蓝色点表示蓝线
+    //             circle(image_scope, Point(x,y), 2, Scalar(255,0,0), -1);
+    //         }
+    //     }
+    // }
 
     // 创建显示用的图像副本
     field_image.copyTo(monitor_image(cv::Rect(0, 50, field_image.cols, field_image.rows)));
@@ -402,7 +392,7 @@ void imageCallback(const sensor_msgs::ImageConstPtr& msg)
     info_area.setTo(cv::Scalar(255, 255, 255));  // 清除之前的文本
     
     std::string coordinates = cv::format("X: %.2f  Y: %.2f  Yaw: %.2f", counter_x, counter_y, counter_yaw);
-    cv::putText(monitor_image, coordinates, cv::Point(10, 30), 
+    cv::putText(monitor_image, coordinates, cv::Point(200, 30), 
                 cv::FONT_HERSHEY_SIMPLEX, 0.8, cv::Scalar(0, 0, 0), 2);
     
     // 绘制机器人图标
@@ -429,8 +419,9 @@ void imageCallback(const sensor_msgs::ImageConstPtr& msg)
     cv::line(monitor_image, robot_pos, direction_end, cv::Scalar(0,0,0), 2);
 
     // 显示
-    cv::imshow("result", image_show);
+    // cv::imshow("result", image_show);
     cv::imshow("match_result", image_match_result);
+    cv::imshow("定位", monitor_image);
     cv::waitKey(1);
 }
 
@@ -444,7 +435,8 @@ int main(int argc, char** argv) {
 
     std::string lines_file;
     nh.param<std::string>("lines_file", lines_file, "lines.jpg");
-    lines_map.loadImage(lines_file);
+    image_lines_all = cv::imread(lines_file);
+    //lines_map.loadImage(lines_file);
 
     std::string field_file;
     nh.param<std::string>("field_file", field_file, "field_bg.png");
@@ -454,11 +446,29 @@ int main(int argc, char** argv) {
         return -1;
     }
     
+    
     // 初始化field_image为彩色图像，尺寸为resultImage的一半
     cv::resize(resultImage, field_image, cv::Size(resultImage.cols/2, resultImage.rows/2));
     
     // 初始化monitor_image，大小与field_image相同
     monitor_image = cv::Mat(field_image.rows + 50, field_image.cols, CV_8UC3);
+
+    
+    // 读取参数
+    std::string lines_map_path, red_map_path, blue_map_path;
+    nh.param<std::string>("lines_map_file", lines_map_path, "");
+    nh.param<std::string>("red_map_file", red_map_path, "");
+    nh.param<std::string>("blue_map_file", blue_map_path, "");
+    // 读取图像为灰度图
+    image_lines_map = cv::imread(lines_map_path, cv::IMREAD_GRAYSCALE);
+    image_red_map = cv::imread(red_map_path, cv::IMREAD_GRAYSCALE);
+    image_blue_map = cv::imread(blue_map_path, cv::IMREAD_GRAYSCALE);
+
+    // 检查图像是否成功加载
+    if(image_lines_map.empty() || image_red_map.empty() || image_blue_map.empty()) {
+        ROS_ERROR("场线模板读取失败！");
+        return -1;
+    }
 
     ros::Subscriber sub = nh.subscribe("/omni_camera/image_raw", 1, imageCallback);
 

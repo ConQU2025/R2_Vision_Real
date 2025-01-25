@@ -23,6 +23,9 @@
     <param name= "table_file" value="$(find robocon_localization)/config/dist_table.txt" />
     <param name= "lines_file" value="$(find robocon_localization)/config/field_lines.jpg" />
     <param name= "field_file" value="$(find robocon_localization)/config/field_bg.png" />
+    <param name= "lines_map_file" value="$(find robocon_localization)/config/white_lines.png"/>
+    <param name= "red_map_file" value="$(find robocon_localization)/config/red_lines.png"/>
+    <param name= "blue_map_file" value="$(find robocon_localization)/config/blue_lines.png"/>
   </node>
 
 </launch>
