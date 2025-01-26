@@ -150,7 +150,7 @@ void imageCallback(const sensor_msgs::ImageConstPtr& msg)
     // 计算旋转后图像的中心点
     cv::Point2f img_center(rotated_image.cols/2.0f, rotated_image.rows/2.0f);
     
-    // 添加缩放比例变量
+    // 缩放比例变量
     const float scale_factor_x = 2.4f;  // X方向缩放因子
     const float scale_factor_y = 2.3f;  // Y方向缩放因子
     // 计算横向偏移量，使两个图像中心对齐
@@ -163,7 +163,7 @@ void imageCallback(const sensor_msgs::ImageConstPtr& msg)
     std::vector<cv::Point2f> red_points;
     std::vector<cv::Point2f> blue_points;
 
-    // 添加用于计算平均位置的变量
+    // 用于计算平均位置的变量
     cv::Point2f red_avg(0.0f, 0.0f);
     cv::Point2f blue_avg(0.0f, 0.0f);
 
@@ -325,7 +325,7 @@ void imageCallback(const sensor_msgs::ImageConstPtr& msg)
     // }
     // cv::cvtColor(image_match_result, image_match_result, cv::COLOR_GRAY2BGR);
     
-    // printf("counter_x: %.2f, counter_y: %.2f, counter_yaw: %.2f\n", counter_x, counter_y, counter_yaw);
+    printf("counter_x: %.2f, counter_y: %.2f, counter_yaw: %.2f\n", counter_x, counter_y, counter_yaw);
 
     // 绘制白点
     for(const auto& point : white_points) {
@@ -369,10 +369,10 @@ void imageCallback(const sensor_msgs::ImageConstPtr& msg)
     // 将各种线条标记到 image_scope 上
     // for(int y = 0; y < image_scope.rows; y++) {
     //     for(int x = 0; x < image_scope.cols; x++) {
-    //         if(image_corrected.at<uchar>(y,x) == 255) {
-    //             // 白色点表示白线
-    //             circle(image_scope, Point(x,y), 2, Scalar(255,255,255), -1);
-    //         }
+    //         // if(image_corrected.at<uchar>(y,x) == 255) {
+    //         //     // 白色点表示白线
+    //         //     circle(image_scope, Point(x,y), 2, Scalar(255,255,255), -1);
+    //         // }
     //         if(image_sideline_red.at<uchar>(y,x) == 255) {
     //             // 红色点表示红线
     //             circle(image_scope, Point(x,y), 2, Scalar(0,0,255), -1);
@@ -381,6 +381,16 @@ void imageCallback(const sensor_msgs::ImageConstPtr& msg)
     //             // 蓝色点表示蓝线
     //             circle(image_scope, Point(x,y), 2, Scalar(255,0,0), -1);
     //         }
+    //     }
+    // }
+
+    // 在image_scope上绘制筛选后的white_points
+    // for(const auto& point : white_points) {
+    //     if(point.x >= 0 && point.x < image_scope.cols &&
+    //        point.y >= 0 && point.y < image_scope.rows) {
+    //         int x = -(point.x - x_offset - img_center.x)/scale_factor_x + img_center.x;
+    //         int y = (point.y - y_offset - img_center.y)/scale_factor_y + img_center.y;
+    //         circle(image_scope, Point(y, x), 2, Scalar(255,255,255), -1);
     //     }
     // }
 
@@ -419,7 +429,8 @@ void imageCallback(const sensor_msgs::ImageConstPtr& msg)
     cv::line(monitor_image, robot_pos, direction_end, cv::Scalar(0,0,0), 2);
 
     // 显示
-    // cv::imshow("result", image_show);
+    cv::imshow("result", image_show);
+    // cv::imshow("scope", image_scope);
     cv::imshow("match_result", image_match_result);
     cv::imshow("定位", monitor_image);
     cv::waitKey(1);
