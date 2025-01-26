@@ -4,16 +4,13 @@
 #include <opencv2/opencv.hpp>
 #include <cmath>
 #include "distance_lookup.h"
-#include "lines_map.h"
 #include "lines_matcher.h"
+#include <sensor_msgs/Imu.h>
 #include <geometry_msgs/PoseStamped.h>
-#include <tf2/LinearMath/Matrix3x3.h>
-#include <tf2/LinearMath/Quaternion.h>
 
 using namespace cv;
 
 static DistanceLookup distanceLookup;
-static LinesMap lines_map;
 static float counter_x = 0;
 static float counter_y = 0;
 static float counter_yaw = 0;
@@ -24,8 +21,18 @@ static cv::Mat image_lines_map;
 static cv::Mat image_red_map;
 static cv::Mat image_blue_map;
 
+static bool flag_relocalization = false;
+static bool is_robot_tilted = false;
+
+static ros::Publisher pose_pub;
+
 void imageCallback(const sensor_msgs::ImageConstPtr& msg) 
 {
+    // 检查标记变量
+    if (!flag_relocalization) {
+        return;
+    }
+
     cv_bridge::CvImagePtr cv_ptr;
     try {
         cv_ptr = cv_bridge::toCvCopy(msg, sensor_msgs::image_encodings::BGR8);
@@ -198,6 +205,12 @@ void imageCallback(const sensor_msgs::ImageConstPtr& msg)
         }
     }
 
+    /*********************************************************************************************/
+    // 匹配开始
+    counter_x = 0;
+    counter_y = 0;
+    counter_yaw = -1;
+
     // 只有当红点和蓝点都存在时才计算角度
     if (!red_points.empty() && !blue_points.empty()) {
         red_avg = LinesMatcher::calculateLinePointsAverage(red_points, image_lines_map.size());
@@ -228,15 +241,15 @@ void imageCallback(const sensor_msgs::ImageConstPtr& msg)
         }
         
         // 更新计数器和上一次的最大匹配值
-        counter_x += match_result.best_dx;
-        counter_y += match_result.best_dy;
-        counter_yaw += match_result.best_angle;
+        counter_x = match_result.best_dx;
+        counter_y = match_result.best_dy;
+        counter_yaw = match_result.best_angle;
         last_max_sum = match_result.max_sum;
     }
 
     float rad = (counter_yaw) * CV_PI / 180.0;
     
-    // 只有当红点和蓝点都存在时才进行范围统计
+    // 如果红点和蓝点都存在，则进行范围统计
     if (!red_points.empty() && !blue_points.empty()) {
         // 初始化范围统计变量
         float min_x = std::numeric_limits<float>::max();
@@ -290,30 +303,67 @@ void imageCallback(const sensor_msgs::ImageConstPtr& msg)
         white_points = filtered_white_points;
     }
 
-    // [2] 使用白点进行场线匹配
-    int last_white_sum = 0;
-    while (true) {
-        MatchResult white_match = LinesMatcher::refineMatchWithWhitePoints(
-            white_points,
-            image_lines_map,
-            center,
-            counter_x,
-            counter_y,
-            counter_yaw
-        );
-        
-        // 如果本次匹配结果没有改善，则退出循环
-        if (white_match.max_sum <= last_white_sum) {
-            break;
+    
+    // [定位测试] 在多个地点使用白点进行场线匹配
+    int index_x[] = {-150, 0, 150};
+    int index_y[] = {-100, 0, 100};
+    int index_yaw[] = { 0, 45, 90, 135, 180, 225, 270, 315};
+
+    int best_x = 0;
+    int best_y = 0;
+    int best_yaw = 0;
+    int best_sum = 0;
+
+    for(int i = 0; i < 3; i++) {
+        int test_x = index_x[i];
+        for(int j = 0; j < 3; j++) {
+            int test_y = index_y[j];
+            for(int k = 0; k < 8; k++) {
+                int test_yaw = counter_yaw;
+                if(test_yaw == -1) {
+                    test_yaw = index_yaw[k];
+                }
+                // 用测试值开始匹配
+                int last_white_sum = 0;
+                while (true) {
+                    MatchResult white_match = LinesMatcher::refineMatchWithWhitePoints(
+                        white_points,
+                        image_lines_map,
+                        center,
+                        test_x,
+                        test_y,
+                        test_yaw
+                    );
+                    
+                    // 如果本次匹配结果没有改善，则退出循环
+                    if (white_match.max_sum <= last_white_sum) {
+                        break;
+                    }
+                    
+                    // 更新计数器和上一次的最大匹配值
+                    test_x += white_match.best_dx;
+                    test_y += white_match.best_dy;
+                    test_yaw += white_match.best_angle;
+                    last_white_sum = white_match.max_sum;
+                }
+                // 此时完成了一轮完整匹配，记录结果
+                if(last_white_sum > best_sum) {
+                    best_x = test_x;
+                    best_y = test_y;
+                    best_yaw = test_yaw;
+                    best_sum = last_white_sum;
+                }
+            }
         }
-        
-        // 更新计数器和上一次的最大匹配值
-        counter_x += white_match.best_dx;
-        counter_y += white_match.best_dy;
-        counter_yaw += white_match.best_angle;
-        last_white_sum = white_match.max_sum;
     }
 
+    // 所有测试完成，显示最佳结果
+    counter_x = best_x;
+    counter_y = best_y;
+    counter_yaw = best_yaw;
+
+    // 匹配结束
+    /*********************************************************************************************/
     // 显示匹配效果
     cv::Mat image_match_result = image_lines_all.clone();
     // cv::Mat image_match_result = image_lines_map.clone();
@@ -327,7 +377,7 @@ void imageCallback(const sensor_msgs::ImageConstPtr& msg)
     // }
     // cv::cvtColor(image_match_result, image_match_result, cv::COLOR_GRAY2BGR);
     
-    // printf("counter_x: %.2f, counter_y: %.2f, counter_yaw: %.2f\n", counter_x, counter_y, counter_yaw);
+    ROS_INFO("最佳匹配结果: counter_x: %.2f, counter_y: %.2f, counter_yaw: %.2f\n", counter_x, counter_y, counter_yaw);
 
     // 绘制白点
     for(const auto& point : white_points) {
@@ -431,34 +481,61 @@ void imageCallback(const sensor_msgs::ImageConstPtr& msg)
     cv::line(monitor_image, robot_pos, direction_end, cv::Scalar(0,0,0), 2);
 
     // 显示
-    cv::imshow("result", image_show);
+    // cv::imshow("result", image_show);
     // cv::imshow("scope", image_scope);
-    cv::imshow("match_result", image_match_result);
-    cv::imshow("定位", monitor_image);
-    cv::waitKey(1);
+    // cv::imshow("match_result", image_match_result);
+    // cv::imshow("定位", monitor_image);
+    // cv::waitKey(1);
+
+    flag_relocalization = false;
+
+    // 在匹配结果处理完成后，发布位置信息
+    // 创建并发布位姿消息
+    geometry_msgs::PoseStamped pose_msg;
+    pose_msg.header.stamp = ros::Time::now();
+    pose_msg.header.frame_id = "map";
+    
+    // 设置位置 (单位转换: 像素->米)
+    pose_msg.pose.position.x = counter_x / 100.0;  // 假设100像素=1米
+    pose_msg.pose.position.y = counter_y / 100.0;
+    pose_msg.pose.position.z = 0.0;
+    
+    // 设置方向（将角度转换为四元数）
+    float yaw_rad = counter_yaw * M_PI / 180.0;
+    pose_msg.pose.orientation.x = 0.0;
+    pose_msg.pose.orientation.y = 0.0;
+    pose_msg.pose.orientation.z = sin(yaw_rad / 2.0);
+    pose_msg.pose.orientation.w = cos(yaw_rad / 2.0);
+    
+    // 发布消息
+    pose_pub.publish(pose_msg);
 }
 
-// 添加重定位回调函数
-void relocCallback(const geometry_msgs::PoseStamped::ConstPtr& msg)
+static const float TILT_THRESHOLD = 1.0f;  // 倾斜阈值（度）
+
+// IMU回调函数
+void imuCallback(const sensor_msgs::Imu::ConstPtr& msg) 
 {
-    counter_x = msg->pose.position.x;
-    counter_y = msg->pose.position.y;
-    
-    // 从四元数转换为欧拉角(yaw)
-    double roll, pitch, yaw;
-    tf2::Quaternion q(
-        msg->pose.orientation.x,
-        msg->pose.orientation.y,
-        msg->pose.orientation.z,
-        msg->pose.orientation.w);
-    tf2::Matrix3x3(q).getRPY(roll, pitch, yaw);
-    counter_yaw = yaw * 180.0 / M_PI;  // 转换为角度
-    ROS_WARN("重新定位: ( %.2f,  %.2f) yaw: %.2f", counter_x, counter_y, counter_yaw);
+    // 显示roll和pitch的角度值 0～360
+    float roll = msg->orientation.x * 180 / CV_PI;
+    float pitch = msg->orientation.y * 180 / CV_PI;
+
+    // 使用绝对值判断倾斜状态
+    if(std::abs(roll) > TILT_THRESHOLD || std::abs(pitch) > TILT_THRESHOLD) {
+        is_robot_tilted = true;
+        ROS_INFO("机器人倾倒 roll: %.2f 度, pitch: %.2f 度", roll, pitch);
+    }
+
+    // 当机器人从倾倒回复到正常状态时，开始进行重定位
+    if(is_robot_tilted && std::abs(roll) < TILT_THRESHOLD && std::abs(pitch) < TILT_THRESHOLD) {
+        flag_relocalization = true;
+        is_robot_tilted = false;
+    }
 }
 
 int main(int argc, char** argv) {
     setlocale(LC_ALL, "");
-    ros::init(argc, argv, "loc_sidelines");
+    ros::init(argc, argv, "relocalization");
     ros::NodeHandle nh("~");
 
     std::string table_file;
@@ -469,7 +546,6 @@ int main(int argc, char** argv) {
     nh.param<std::string>("lines_file", lines_file, "lines.jpg");
     image_lines_all = cv::imread(lines_file);
 
-
     std::string field_file;
     nh.param<std::string>("field_file", field_file, "field_bg.png");
     cv::Mat resultImage = cv::imread(field_file);
@@ -478,7 +554,7 @@ int main(int argc, char** argv) {
         return -1;
     }
     
-
+    
     // 初始化field_image为彩色图像，尺寸为resultImage的一半
     cv::resize(resultImage, field_image, cv::Size(resultImage.cols/2, resultImage.rows/2));
     
@@ -502,9 +578,12 @@ int main(int argc, char** argv) {
         return -1;
     }
 
+    // 在订阅器之前添加发布器初始化
+    pose_pub = nh.advertise<geometry_msgs::PoseStamped>("/reloc_pose", 1);
+
+    // 添加IMU订阅器
+    ros::Subscriber imu_sub = nh.subscribe("/imu/data", 1, imuCallback);
     ros::Subscriber sub = nh.subscribe("/omni_camera/image_raw", 1, imageCallback);
-    // 添加重定位话题订阅
-    ros::Subscriber reloc_sub = nh.subscribe("/reloc_pose", 1, relocCallback);
 
     ros::spin();
 
