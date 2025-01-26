@@ -1,9 +1,10 @@
 # RoboCon2025 技术验证项目
 
-## 前置技能
+## 视频介绍
 技术概况: [为 RoboCon 2025 抛个砖 - 足球机器人技术分享](https://www.bilibili.com/video/BV17KpTeaEvU/)   
-实战效果: [RoboCup机器人世界杯夺冠之旅](https://www.bilibili.com/video/BV1q4411K7Z6/)  
-入门课程：[机器人操作系统ROS 快速入门教程](https://www.bilibili.com/video/BV1BP4y1o7pw/)  
+实战效果: [RoboCup 2017 机器人世界杯夺冠之旅](https://www.bilibili.com/video/BV1q4411K7Z6/)  
+入门课程：[机器人操作系统ROS 快速入门教程](https://www.bilibili.com/video/BV1BP4y1o7pw/) 
+定位方法: [基于 ROS 的 RoboCon 2025 纯视觉定位方法分享](https://www.bilibili.com/video/BV1RYwYejEzx/) 
 
 ## 系统版本
 
@@ -34,13 +35,13 @@ cd ~/catkin_ws
 catkin_make
 ```
 
-距离标定:
+[1]距离标定:
 ```
 roslaunch robocon_localization calibrate_dist.launch
 ```
 ![calibrate_dist pic](./media/01.jpg)
 
-视觉定位:
+[2]视觉定位:
 ```
 roslaunch robocon_localization localization.launch
 ```
