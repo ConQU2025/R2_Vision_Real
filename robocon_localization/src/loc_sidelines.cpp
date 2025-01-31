@@ -198,22 +198,19 @@ void imageCallback(const sensor_msgs::ImageConstPtr& msg)
         }
     }
 
-    // 只有当红点和蓝点都存在时才计算角度
-    if (!red_points.empty() && !blue_points.empty()) {
-        red_avg = LinesMatcher::calculateLinePointsAverage(red_points, image_lines_map.size());
-        blue_avg = LinesMatcher::calculateLinePointsAverage(blue_points, image_lines_map.size());
-        
-        // 计算从red_avg指向blue_avg的角度
-        float dx = blue_avg.x - red_avg.x;
-        float dy = blue_avg.y - red_avg.y;
-        float angle = atan2(dy, dx) * 180 / CV_PI;
-        
-        // 计算红点和蓝点的连线的中心点坐标
-        cv::Point2f line_center((red_avg.x + blue_avg.x) / 2, (red_avg.y + blue_avg.y) / 2);
-        counter_yaw = -90 - angle;
-    }
-    
     // [1]先使用红蓝边线进行初次匹配
+    red_avg = LinesMatcher::calculateLinePointsAverage(red_points, image_lines_map.size());
+    blue_avg = LinesMatcher::calculateLinePointsAverage(blue_points, image_lines_map.size());
+    
+    // 计算从red_avg指向blue_avg的角度
+    float dx = blue_avg.x - red_avg.x;
+    float dy = blue_avg.y - red_avg.y;
+    float angle = atan2(dy, dx) * 180 / CV_PI;
+    
+    // 计算红点和蓝点的连线的中心点坐标
+    cv::Point2f line_center((red_avg.x + blue_avg.x) / 2, (red_avg.y + blue_avg.y) / 2);
+        counter_yaw = -90 - angle;
+    
     cv::Point2f center(img_center.x + x_offset, img_center.y + y_offset);
 
     int last_max_sum = 0;
@@ -236,59 +233,56 @@ void imageCallback(const sensor_msgs::ImageConstPtr& msg)
 
     float rad = (counter_yaw) * CV_PI / 180.0;
     
-    // 只有当红点和蓝点都存在时才进行范围统计
-    if (!red_points.empty() && !blue_points.empty()) {
-        // 初始化范围统计变量
-        float min_x = std::numeric_limits<float>::max();
-        float max_x = std::numeric_limits<float>::lowest();
-        float min_y = std::numeric_limits<float>::max();
-        float max_y = std::numeric_limits<float>::lowest();
+    // 初始化范围统计变量
+    float min_x = std::numeric_limits<float>::max();
+    float max_x = std::numeric_limits<float>::lowest();
+    float min_y = std::numeric_limits<float>::max();
+    float max_y = std::numeric_limits<float>::lowest();
 
-        // 先统计红点范围
-        for(const auto& point : red_points) {
-            float x = point.x - center.x;
-            float y = point.y - center.y;
-            float rotated_x = x * cos(rad) - y * sin(rad) + center.x + counter_x;
-            float rotated_y = x * sin(rad) + y * cos(rad) + center.y + counter_y;
-            
-            min_x = std::min(min_x, rotated_x);
-            max_x = std::max(max_x, rotated_x);
-            min_y = std::min(min_y, rotated_y);
-            max_y = std::max(max_y, rotated_y);
-        }
-
-        // 再加上统计蓝点范围
-        for(const auto& point : blue_points) {
-            float x = point.x - center.x;
-            float y = point.y - center.y;
-            float rotated_x = x * cos(rad) - y * sin(rad) + center.x + counter_x;
-            float rotated_y = x * sin(rad) + y * cos(rad) + center.y + counter_y;
-            
-            min_x = std::min(min_x, rotated_x);
-            max_x = std::max(max_x, rotated_x);
-            min_y = std::min(min_y, rotated_y);
-            max_y = std::max(max_y, rotated_y);
-        }
-
-        // printf("点的范围 - X: [%.2f, %.2f], Y: [%.2f, %.2f]\n", min_x, max_x, min_y, max_y);
-
-        // 利用红蓝边界，剔除边界外的白点
-        std::vector<cv::Point2f> filtered_white_points;
-        for(const auto& point : white_points) {
-            float x = point.x - center.x;
-            float y = point.y - center.y;
-            float rotated_x = x * cos(rad) - y * sin(rad) + center.x + counter_x;
-            float rotated_y = x * sin(rad) + y * cos(rad) + center.y + counter_y;
-            
-            // 只保留在范围内的点
-            if (rotated_x >= min_x && rotated_x <= max_x && 
-                rotated_y >= min_y && rotated_y <= max_y) {
-                filtered_white_points.push_back(point);
-            }
-        }
-        // 用过滤后的点替换原来的white_points
-        white_points = filtered_white_points;
+    // 先统计红点范围
+    for(const auto& point : red_points) {
+        float x = point.x - center.x;
+        float y = point.y - center.y;
+        float rotated_x = x * cos(rad) - y * sin(rad) + center.x + counter_x;
+        float rotated_y = x * sin(rad) + y * cos(rad) + center.y + counter_y;
+        
+        min_x = std::min(min_x, rotated_x);
+        max_x = std::max(max_x, rotated_x);
+        min_y = std::min(min_y, rotated_y);
+        max_y = std::max(max_y, rotated_y);
     }
+
+    // 再加上统计蓝点范围
+    for(const auto& point : blue_points) {
+        float x = point.x - center.x;
+        float y = point.y - center.y;
+        float rotated_x = x * cos(rad) - y * sin(rad) + center.x + counter_x;
+        float rotated_y = x * sin(rad) + y * cos(rad) + center.y + counter_y;
+        
+        min_x = std::min(min_x, rotated_x);
+        max_x = std::max(max_x, rotated_x);
+        min_y = std::min(min_y, rotated_y);
+        max_y = std::max(max_y, rotated_y);
+    }
+
+    // printf("点的范围 - X: [%.2f, %.2f], Y: [%.2f, %.2f]\n", min_x, max_x, min_y, max_y);
+
+    // 利用红蓝边界，剔除边界外的白点
+    std::vector<cv::Point2f> filtered_white_points;
+    for(const auto& point : white_points) {
+        float x = point.x - center.x;
+        float y = point.y - center.y;
+        float rotated_x = x * cos(rad) - y * sin(rad) + center.x + counter_x;
+        float rotated_y = x * sin(rad) + y * cos(rad) + center.y + counter_y;
+        
+        // 只保留在范围内的点
+        if (rotated_x >= min_x && rotated_x <= max_x && 
+            rotated_y >= min_y && rotated_y <= max_y) {
+            filtered_white_points.push_back(point);
+        }
+    }
+    // 用过滤后的点替换原来的white_points
+    white_points = filtered_white_points;
 
     // [2] 使用白点进行场线匹配
     int last_white_sum = 0;
