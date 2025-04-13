@@ -1,0 +1,50 @@
+<launch>
+
+  <!-- these are the arguments you can pass this launch file, for example paused:=true -->
+  <arg name="paused" default="false"/>
+  <arg name="use_sim_time" default="true"/>
+  <arg name="gui" default="true"/>
+  <arg name="headless" default="false"/>
+  <arg name="debug" default="false"/> 
+  <arg name="verbose" default="false"/>
+
+  <!-- We resume the logic in empty_world.launch, changing only the name of the world to be launched -->
+  <include file="$(find gazebo_ros)/launch/empty_world.launch">
+    <arg name="world_name" value="$(find robocon25_sim)/worlds/robocon25.world"/>
+    <arg name="verbose" 	value="true"/>
+    <arg name="paused"		value="false"/>
+  </include>
+  
+  <!-- Spawn a robot into Gazebo -->
+  <node name="spawn_urdf" pkg="gazebo_ros" type="spawn_model" args="-file $(find robocon25_sim)/models/robot.model -urdf -model robot" />
+
+  <!-- [定位方法一] 只用场线定位 localization 节点-->
+  <!-- <node name="localization" pkg="robocon_localization" type="localization" output="screen">
+    <param name= "table_file" value="$(find robocon_localization)/config/dist_table.txt" />
+    <param name= "lines_file" value="$(find robocon_localization)/config/field_lines.jpg" />
+    <param name= "field_file" value="$(find robocon_localization)/config/field_bg.png" />
+  </node> -->
+
+  <!-- [定位方法二] 使用边线辅助场线定位 loc_sidelines 场线定位节点 -->
+  <node name="loc_sidelines" pkg="robocon_localization" type="loc_sidelines" output="screen">
+    <param name= "table_file" value="$(find robocon_localization)/config/dist_table.txt" />
+    <param name= "lines_file" value="$(find robocon_localization)/config/field_lines.jpg" />
+    <param name= "field_file" value="$(find robocon_localization)/config/field_bg.png" />
+    <param name= "lines_map_file" value="$(find robocon_localization)/config/white_lines.png"/>
+    <param name= "red_map_file" value="$(find robocon_localization)/config/red_lines.png"/>
+    <param name= "blue_map_file" value="$(find robocon_localization)/config/blue_lines.png"/>
+  </node>
+
+  <!-- 启动 relocalization 重定位节点 -->
+  <node name="relocalization" pkg="robocon_localization" type="relocalization" output="screen">
+    <param name= "table_file" value="$(find robocon_localization)/config/dist_table.txt" />
+    <param name= "lines_file" value="$(find robocon_localization)/config/field_lines.jpg" />
+    <param name= "field_file" value="$(find robocon_localization)/config/field_bg.png" />
+    <param name= "lines_map_file" value="$(find robocon_localization)/config/white_lines.png"/>
+    <param name= "red_map_file" value="$(find robocon_localization)/config/red_lines.png"/>
+    <param name= "blue_map_file" value="$(find robocon_localization)/config/blue_lines.png"/>
+  </node>
+
+</launch>
+
+
