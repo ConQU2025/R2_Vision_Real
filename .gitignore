@@ -1,0 +1,61 @@
+# ROS相关忽略项
+build/
+devel/
+install/
+logs/
+.catkin_workspace
+.catkin_tools/
+
+# 编译产物
+*.o
+*.so
+*.a
+*.la
+*.lo
+*.pyc
+*.pyo
+*.pyd
+__pycache__/
+*.py[cod]
+*$py.class
+
+# 临时文件
+*~
+.*.swp
+.*.swo
+.DS_Store
+.vscode/
+.idea/
+*.tmp
+*.bak
+
+# 编译中间目录
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+Makefile
+gtest/
+bin/
+lib/
+msg_gen/
+srv_gen/
+
+# 自动生成的文件
+*.bag
+*_msgs/msg/_*.py
+*_msgs/srv/_*.py
+*_msgs/msg/*.py
+*_msgs/srv/*.py
+
+# 包特定
+*.user
+*.autosave
+node_modules/
+.pytest_cache/
+
+# 依赖项
+.rosinstall
+.rosinstall.bak
+
+# 日志文件
+*.log
