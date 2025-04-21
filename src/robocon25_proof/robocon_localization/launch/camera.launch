@@ -4,10 +4,9 @@
   <arg name="paused" default="false"/>
   <arg name="use_sim_time" default="false"/>
   <arg name="gui" default="false"/>
-  <arg name="headless" default="true"/>
+  <arg name="headless" default="false"/>
   <arg name="debug" default="false"/> 
   <arg name="verbose" default="false"/>
-  <env name="DISABLE_GAZEBO" value="true"/>
 
   <!-- JY901B IMU参数设置 -->
   <arg name="imu_port" default="/dev/ttyUSB0" doc="JY901B串口设备路径，可能是/dev/ttyUSB0或/dev/ttyACM0"/>
@@ -25,15 +24,15 @@
   <!--node name="spawn_urdf" pkg="gazebo_ros" type="spawn_model" args="-file $(find robocon25_sim)/models/robot.model -urdf -model robot" /-->
 
   <!-- [定位方法一] 只用场线定位 localization 节点-->
-  <!-- <node name="localization" pkg="robocon_localization" type="localization" output="screen">
+  <!--node name="localization" pkg="robocon_localization" type="localization" output="screen">
     <param name= "table_file" value="$(find robocon_localization)/config/dist_table.txt" />
     <param name= "lines_file" value="$(find robocon_localization)/config/field_lines.jpg" />
     <param name= "field_file" value="$(find robocon_localization)/config/field_bg.png" />
-  </node> -->
+  </node-->
 
   <!-- [定位方法二] 使用边线辅助场线定位 loc_sidelines 场线定位节点 -->
   <node name="loc_sidelines" pkg="robocon_localization" type="loc_sidelines">
-    <param name= "table_file" value="$(find robocon_localization)/config/dist_table.txt" />
+    <param name= "table_file" value="$(find robocon_localization)/config/dist_small" />
     <param name= "lines_file" value="$(find robocon_localization)/config/field_lines.jpg" />
     <param name= "field_file" value="$(find robocon_localization)/config/field_bg.png" />
     <param name= "lines_map_file" value="$(find robocon_localization)/config/white_lines.png"/>
@@ -43,7 +42,7 @@
 
   <!-- 启动 relocalization 重定位节点 -->
   <node name="relocalization" pkg="robocon_localization" type="relocalization">
-    <param name= "table_file" value="$(find robocon_localization)/config/dist_table.txt" />
+    <param name= "table_file" value="$(find robocon_localization)/config/dist_small" />
     <param name= "lines_file" value="$(find robocon_localization)/config/field_lines.jpg" />
     <param name= "field_file" value="$(find robocon_localization)/config/field_bg.png" />
     <param name= "lines_map_file" value="$(find robocon_localization)/config/white_lines.png"/>
@@ -60,7 +59,7 @@
     <param name="camera_frame_id" value="camera_link" />
     <param name="autowhitebalance" value="true" />
     <param name="io_method" value="mmap"/>
-    <remap from="/usb_cam/image_raw" to="/omni_camera/image_raw"/>
+    <!-- <remap from="/usb_cam/image_raw" to="/omni_camera/image_raw"/> -->
   </node>
 
   <!-- 启动JY901B IMU节点 -->
