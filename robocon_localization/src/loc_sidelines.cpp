@@ -496,7 +496,7 @@ int main(int argc, char** argv) {
         return -1;
     }
 
-    ros::Subscriber sub = nh.subscribe("/omni_camera/image_raw", 1, imageCallback);
+    ros::Subscriber sub = nh.subscribe("/usb_cam/image_raw", 1, imageCallback);
     // 添加重定位话题订阅
     ros::Subscriber reloc_sub = nh.subscribe("/reloc_pose", 1, relocCallback);
 

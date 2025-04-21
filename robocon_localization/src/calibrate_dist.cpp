@@ -16,6 +16,10 @@ void imageCallback(const sensor_msgs::ImageConstPtr& msg) {
 
     Mat image_raw = cv_ptr->image;
 
+    /*
+      处理图像
+    */
+
     Mat image_hsv;
     cv::cvtColor(image_raw, image_hsv, COLOR_BGR2HSV);
 
@@ -58,7 +62,7 @@ int main(int argc, char** argv) {
     ros::init(argc, argv, "calibrate_dist");
     ros::NodeHandle nh;
 
-    ros::Subscriber sub = nh.subscribe("/omni_camera/image_raw", 1, imageCallback);
+    ros::Subscriber sub = nh.subscribe("/usb_cam/image_raw", 1, imageCallback);
 
     cv::namedWindow("result", cv::WINDOW_AUTOSIZE);
     ros::spin();
