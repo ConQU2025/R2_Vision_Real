@@ -61,31 +61,6 @@ void imageCallback(const sensor_msgs::ImageConstPtr& msg)
     //     }
     // }
 
-
-    // === 去除反光并提高对比度 ===
-    // 1. 提高对比度（CLAHE）
-    cv::Mat lab_image;
-    cv::cvtColor(image_raw, lab_image, cv::COLOR_BGR2Lab);
-    std::vector<cv::Mat> lab_planes(3);
-    cv::split(lab_image, lab_planes);
-    cv::Ptr<cv::CLAHE> clahe = cv::createCLAHE(4.0, cv::Size(8,8));
-    clahe->apply(lab_planes[0], lab_planes[0]);
-    cv::merge(lab_planes, lab_image);
-    cv::cvtColor(lab_image, image_raw, cv::COLOR_Lab2BGR);
-
-    // 2. 去除反光（降低高亮区域V值）
-    cv::Mat hsv_img;
-    cv::cvtColor(image_raw, hsv_img, cv::COLOR_BGR2HSV);
-    std::vector<cv::Mat> hsv_planes;
-    cv::split(hsv_img, hsv_planes);
-    // 对高亮区域（V>240）进行抑制
-    cv::Mat mask_reflect;
-    cv::threshold(hsv_planes[2], mask_reflect, 240, 255, cv::THRESH_BINARY);
-    hsv_planes[2].setTo(200, mask_reflect); // 将高亮区域V值降为200
-    cv::merge(hsv_planes, hsv_img);
-    cv::cvtColor(hsv_img, image_raw, cv::COLOR_HSV2BGR);
-    // === 处理结束 ===
-
     Mat image_show = image_raw.clone();
     Mat image_scope = image_raw.clone();
     image_scope = Scalar(0, 0, 0);  // 将背景设置为黑色

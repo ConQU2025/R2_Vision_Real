@@ -34,6 +34,56 @@ void imageCallback(const sensor_msgs::ImageConstPtr& msg)
     }
 
     Mat image_raw = cv_ptr->image;
+
+    // // === 去除反光并提高对比度 ===
+    // // 1. 提高对比度（CLAHE）
+    // cv::Mat lab_image;
+    // cv::cvtColor(image_raw, lab_image, cv::COLOR_BGR2Lab);
+    // std::vector<cv::Mat> lab_planes(3);
+    // cv::split(lab_image, lab_planes);
+    // cv::Ptr<cv::CLAHE> clahe = cv::createCLAHE(4.0, cv::Size(8,8));
+    // clahe->apply(lab_planes[0], lab_planes[0]);
+    // cv::merge(lab_planes, lab_image);
+    // cv::cvtColor(lab_image, image_raw, cv::COLOR_Lab2BGR);
+
+    // // 2. 去除反光（降低高亮区域V值）
+    // cv::Mat hsv_img;
+    // cv::cvtColor(image_raw, hsv_img, cv::COLOR_BGR2HSV);
+    // std::vector<cv::Mat> hsv_planes;
+    // cv::split(hsv_img, hsv_planes);
+    // // 对高亮区域（V>240）进行抑制
+    // cv::Mat mask_reflect;
+    // cv::threshold(hsv_planes[2], mask_reflect, 240, 255, cv::THRESH_BINARY);
+    // hsv_planes[2].setTo(200, mask_reflect); // 将高亮区域V值降为200
+    // cv::merge(hsv_planes, hsv_img);
+    // cv::cvtColor(hsv_img, image_raw, cv::COLOR_HSV2BGR);
+    // // === 处理结束 ===
+
+    cv::Vec3b COLORS[3] = {
+        cv::Vec3b(255, 255, 255), // 白
+        cv::Vec3b(0, 0, 255),     // 红
+        cv::Vec3b(255, 0, 0)      // 蓝
+    };
+
+    for (int y = 0; y < image_raw.rows; ++y) {
+        for (int x = 0; x < image_raw.cols; ++x) {
+            cv::Vec3b pix = image_raw.at<cv::Vec3b>(y, x);
+            int min_idx = 0;
+            int min_dist = INT_MAX;
+            for(int i = 0; i < 3; ++i) {
+                int db = int(pix[0]) - int(COLORS[i][0]);
+                int dg = int(pix[1]) - int(COLORS[i][1]);
+                int dr = int(pix[2]) - int(COLORS[i][2]);
+                int dist = db*db + dg*dg + dr*dr;
+                if (dist < min_dist) {
+                    min_dist = dist;
+                    min_idx = i;
+                }
+            }
+            image_raw.at<cv::Vec3b>(y, x) = COLORS[min_idx];
+        }
+    }
+
     Mat image_show = image_raw.clone();
     Mat image_lines = Mat::zeros(image_raw.size(), CV_8UC1);
     Mat image_corrected = image_lines.clone();
