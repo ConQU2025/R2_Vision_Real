@@ -202,10 +202,7 @@ void imageCallback(const sensor_msgs::ImageConstPtr &msg)
             }
             else
             {
-                // 如果射线超出图像范围，重置 last_pixel 状态，防止边界误判
-                last_pixel_white = 0;
-                last_pixel_red = 0;
-                last_pixel_blue = 0;
+                break;
             }
         }
     }
