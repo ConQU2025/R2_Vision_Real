@@ -2,8 +2,8 @@
 
   <!-- these are the arguments you can pass this launch file, for example paused:=true -->
   <arg name="paused" default="false"/>
-  <arg name="use_sim_time" default="true"/>
-  <arg name="gui" default="true"/>
+  <arg name="use_sim_time" default="false"/>
+  <arg name="gui" default="false"/>
   <arg name="headless" default="false"/>
   <arg name="debug" default="false"/> 
   <arg name="verbose" default="false"/>
@@ -18,7 +18,7 @@
   <!-- Spawn a robot into Gazebo -->
   <node name="spawn_urdf" pkg="gazebo_ros" type="spawn_model" args="-file $(find robocon25_sim)/models/robot.model -urdf -model robot" />
 
-  <node name="hsv_adjust" pkg="robocon_localization" type="hsv_adjust" output="screen"/>
+  <node name="hsv_adjust" pkg="conqu_localization" type="hsv_adjust" output="screen"/>
 
 </launch>
 

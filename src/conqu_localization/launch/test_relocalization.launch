@@ -2,30 +2,30 @@
 
   <!-- these are the arguments you can pass this launch file, for example paused:=true -->
   <arg name="paused" default="false"/>
-  <arg name="use_sim_time" default="true"/>
-  <arg name="gui" default="true"/>
+  <arg name="use_sim_time" default="false"/>
+  <arg name="gui" default="false"/>
   <arg name="headless" default="false"/>
   <arg name="debug" default="false"/> 
   <arg name="verbose" default="false"/>
 
   <!-- We resume the logic in empty_world.launch, changing only the name of the world to be launched -->
-  <include file="$(find gazebo_ros)/launch/empty_world.launch">
+  <!-- <include file="$(find gazebo_ros)/launch/empty_world.launch">
     <arg name="world_name" value="$(find robocon25_sim)/worlds/robocon25.world"/>
     <arg name="verbose" 	value="true"/>
     <arg name="paused"		value="false"/>
-  </include>
+  </include> -->
   
   <!-- Spawn a robot into Gazebo -->
-  <node name="spawn_urdf" pkg="gazebo_ros" type="spawn_model" args="-file $(find robocon25_sim)/models/robot.model -urdf -model robot" />
+  <!-- <node name="spawn_urdf" pkg="gazebo_ros" type="spawn_model" args="-file $(find robocon25_sim)/models/robot.model -urdf -model robot" /> -->
 
   <!-- 启动 relocalization 节点 -->
-  <node name="relocalization" pkg="robocon_localization" type="relocalization" output="screen">
-    <param name= "table_file" value="$(find robocon_localization)/config/dist_table.txt" />
-    <param name= "lines_file" value="$(find robocon_localization)/config/field_lines.jpg" />
-    <param name= "field_file" value="$(find robocon_localization)/config/field_bg.png" />
-    <param name= "lines_map_file" value="$(find robocon_localization)/config/white_lines.png"/>
-    <param name= "red_map_file" value="$(find robocon_localization)/config/red_lines.png"/>
-    <param name= "blue_map_file" value="$(find robocon_localization)/config/blue_lines.png"/>
+  <node name="relocalization" pkg="conqu_localization" type="relocalization" output="screen">
+    <param name= "table_file" value="$(find conqu_localization)/config/dist_table.txt" />
+    <param name= "lines_file" value="$(find conqu_localization)/config/field_lines.jpg" />
+    <param name= "field_file" value="$(find conqu_localization)/config/field_bg.png" />
+    <param name= "lines_map_file" value="$(find conqu_localization)/config/white_lines.png"/>
+    <param name= "red_map_file" value="$(find conqu_localization)/config/red_lines.png"/>
+    <param name= "blue_map_file" value="$(find conqu_localization)/config/blue_lines.png"/>
   </node>
 
   <!-- 启动 keyboard_vel_ctrl -->

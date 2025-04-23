@@ -9,9 +9,9 @@
   <arg name="verbose" default="false"/>
 
   <!-- JY901B IMU参数设置 -->
-  <arg name="imu_port" default="/dev/ttyUSB0" doc="JY901B串口设备路径，可能是/dev/ttyUSB0或/dev/ttyACM0"/>
+  <!-- <arg name="imu_port" default="/dev/ttyUSB0" doc="JY901B串口设备路径，可能是/dev/ttyUSB0或/dev/ttyACM0"/>
   <arg name="imu_frame_id" default="imu_link" doc="IMU坐标系ID"/>
-  <arg name="imu_rate" default="100" doc="IMU数据发布频率"/>
+  <arg name="imu_rate" default="100" doc="IMU数据发布频率"/> -->
 
   <!-- We resume the logic in empty_world.launch, changing only the name of the world to be launched -->
   <!--include file="$(find gazebo_ros)/launch/empty_world.launch">
@@ -24,31 +24,31 @@
   <!--node name="spawn_urdf" pkg="gazebo_ros" type="spawn_model" args="-file $(find robocon25_sim)/models/robot.model -urdf -model robot" /-->
 
   <!-- [定位方法一] 只用场线定位 localization 节点-->
-  <!--node name="localization" pkg="robocon_localization" type="localization" output="screen">
-    <param name= "table_file" value="$(find robocon_localization)/config/dist_table.txt" />
-    <param name= "lines_file" value="$(find robocon_localization)/config/field_lines.jpg" />
-    <param name= "field_file" value="$(find robocon_localization)/config/field_bg.png" />
+  <!--node name="localization" pkg="conqu_localization" type="localization" output="screen">
+    <param name= "table_file" value="$(find conqu_localization)/config/dist_table.txt" />
+    <param name= "lines_file" value="$(find conqu_localization)/config/field_lines.jpg" />
+    <param name= "field_file" value="$(find conqu_localization)/config/field_bg.png" />
   </node-->
 
   <!-- [定位方法二] 使用边线辅助场线定位 loc_sidelines 场线定位节点 -->
-  <node name="loc_sidelines" pkg="robocon_localization" type="loc_sidelines">
-    <param name= "table_file" value="$(find robocon_localization)/config/dist_small" />
-    <param name= "lines_file" value="$(find robocon_localization)/config/field_lines.jpg" />
-    <param name= "field_file" value="$(find robocon_localization)/config/field_bg.png" />
-    <param name= "lines_map_file" value="$(find robocon_localization)/config/white_lines.png"/>
-    <param name= "red_map_file" value="$(find robocon_localization)/config/red_lines.png"/>
-    <param name= "blue_map_file" value="$(find robocon_localization)/config/blue_lines.png"/>
+  <node name="loc_sidelines" pkg="conqu_localization" type="loc_sidelines">
+    <param name= "table_file" value="$(find conqu_localization)/config/dist_small" />
+    <param name= "lines_file" value="$(find conqu_localization)/config/field_lines.jpg" />
+    <param name= "field_file" value="$(find conqu_localization)/config/field_bg.png" />
+    <param name= "lines_map_file" value="$(find conqu_localization)/config/white_lines.png"/>
+    <param name= "red_map_file" value="$(find conqu_localization)/config/red_lines.png"/>
+    <param name= "blue_map_file" value="$(find conqu_localization)/config/blue_lines.png"/>
   </node>
 
   <!-- 启动 relocalization 重定位节点 -->
-  <node name="relocalization" pkg="robocon_localization" type="relocalization">
-    <param name= "table_file" value="$(find robocon_localization)/config/dist_small" />
-    <param name= "lines_file" value="$(find robocon_localization)/config/field_lines.jpg" />
-    <param name= "field_file" value="$(find robocon_localization)/config/field_bg.png" />
-    <param name= "lines_map_file" value="$(find robocon_localization)/config/white_lines.png"/>
-    <param name= "red_map_file" value="$(find robocon_localization)/config/red_lines.png"/>
-    <param name= "blue_map_file" value="$(find robocon_localization)/config/blue_lines.png"/>
-  </node>
+  <!-- <node name="relocalization" pkg="conqu_localization" type="relocalization">
+    <param name= "table_file" value="$(find conqu_localization)/config/dist_small" />
+    <param name= "lines_file" value="$(find conqu_localization)/config/field_lines.jpg" />
+    <param name= "field_file" value="$(find conqu_localization)/config/field_bg.png" />
+    <param name= "lines_map_file" value="$(find conqu_localization)/config/white_lines.png"/>
+    <param name= "red_map_file" value="$(find conqu_localization)/config/red_lines.png"/>
+    <param name= "blue_map_file" value="$(find conqu_localization)/config/blue_lines.png"/>
+  </node> -->
 
   <!-- 调用usb摄像头 -->
   <node name="usb_cam" pkg="usb_cam" type="usb_cam_node">
@@ -63,21 +63,21 @@
   </node>
 
   <!-- 启动JY901B IMU节点 -->
-  <node name="jy901_node" pkg="robocon_localization" type="jy901_node" output="screen">
+  <!-- <node name="jy901_node" pkg="conqu_localization" type="jy901_node" output="screen">
     <param name="port" value="$(arg imu_port)"/>
-    <param name="baud" value="9600"/>  <!-- JY901B的默认波特率是9600 -->
+    <param name="baud" value="9600"/>
     <param name="frame_id" value="$(arg imu_frame_id)"/>
     <param name="frequency" value="$(arg imu_rate)"/>
-  </node>
+  </node> -->
 
   <!-- 添加IMU姿态估计滤波器 -->
-  <node pkg="imu_filter_madgwick" type="imu_filter_node" name="imu_filter_node" output="screen">
+  <!-- <node pkg="imu_filter_madgwick" type="imu_filter_node" name="imu_filter_node" output="screen">
     <param name="use_mag" value="true"/>
     <param name="publish_tf" value="false"/>
     <param name="world_frame" value="enu"/>
     <param name="orientation_stddev" value="0.01"/>
     <remap from="/imu/data_raw" to="/imu/data"/>
     <remap from="/imu/data" to="/imu/data_filtered"/>
-  </node>
+  </node> -->
 
 </launch>

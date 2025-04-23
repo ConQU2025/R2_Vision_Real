@@ -1,7 +1,7 @@
 <launch>
 
-  <node name="table_dist" pkg="robocon_localization" type="table_dist" output="screen">
-    <param name= "table_file" value="$(find robocon_localization)/config/dist_table.txt" />
+  <node name="table_dist" pkg="conqu_localization" type="table_dist" output="screen">
+    <param name= "table_file" value="$(find conqu_localization)/config/dist_table.txt" />
   </node>
 
 </launch>

@@ -1,4 +1,5 @@
-# RoboCon2025 技术验证项目
+# ConQU2025 R2视觉实机代码
+### Adapted from **RoboCon2025 技术验证项目**
 
 ## 视频介绍
 技术概况: [为 RoboCon 2025 抛个砖 - 足球机器人技术分享](https://www.bilibili.com/video/BV17KpTeaEvU/)   
@@ -38,13 +39,13 @@ catkin_make
 
 [1]距离标定:
 ```
-roslaunch robocon_localization calibrate_dist.launch
+roslaunch conqu_localization calibrate_dist.launch
 ```
 ![calibrate_dist pic](./media/01.jpg)
 
 [2]视觉定位:
 ```
-roslaunch robocon_localization localization.launch
+roslaunch conqu_localization localization.launch
 ```
 另外一个终端运行:
 ```

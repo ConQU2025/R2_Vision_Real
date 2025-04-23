@@ -22,7 +22,7 @@
   <!--node name="red_ball" pkg="gazebo_ros" type="spawn_model" args="-file $(find wpr_simulation)/models/balls/red_ball.model -x $(arg red_ball_x) -urdf -model red_ball" /-->
 
   <!-- 启动距离标定节点 -->
-  <node name="calibrate_dist" pkg="robocon_localization" type="calibrate_dist" output="screen"/>
+  <node name="calibrate_dist" pkg="conqu_localization" type="calibrate_dist" output="screen"/>
 
   <!-- 调用usb摄像头 -->
   <node name="usb_cam" pkg="usb_cam" type="usb_cam_node">

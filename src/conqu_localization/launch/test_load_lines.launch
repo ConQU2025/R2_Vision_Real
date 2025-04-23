@@ -1,7 +1,7 @@
 <launch>
 
-  <node name="load_lines_map" pkg="robocon_localization" type="load_lines_map" output="screen">
-    <param name= "lines_file" value="$(find robocon_localization)/config/field_lines.jpg" />
+  <node name="load_lines_map" pkg="conqu_localization" type="load_lines_map" output="screen">
+    <param name= "lines_file" value="$(find conqu_localization)/config/field_lines.jpg" />
   </node>
 
 </launch>
