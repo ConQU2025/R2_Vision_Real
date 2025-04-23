@@ -73,17 +73,33 @@ void imageCallback(const sensor_msgs::ImageConstPtr &msg)
     Mat image_scope = Mat::zeros(image_raw.size(), image_raw.type()); // 全黑背景
     Mat image_lines = Mat::zeros(image_raw.size(), CV_8UC1);
     Mat image_corrected = image_lines.clone();
-    Mat image_white = Mat::zeros(image_raw.size(), CV_8UC1); // 白色掩码
-    Mat image_red = Mat::zeros(image_raw.size(), CV_8UC1);   // 红色掩码
-    Mat image_blue = Mat::zeros(image_raw.size(), CV_8UC1);  // 蓝色掩码
     Mat image_sideline_red = image_lines.clone();
     Mat image_sideline_blue = image_lines.clone();
 
-    // 将图像的每个像素转换为红、蓝、白、灰中最近的颜色，并同时生成掩码
-    for (int y = 0; y < image_raw.rows; ++y)
+    int center_x = image_raw.cols / 2;
+    int center_y = image_raw.rows / 2;
+    int max_length = std::max(image_raw.cols, image_raw.rows);
+
+    // 用射线扫描图像
+    for (int angle = 0; angle < 360; angle += 4)
     {
-        for (int x = 0; x < image_raw.cols; ++x)
+        double rad = angle * CV_PI / 180.0;
+        double cos_rad = cos(rad);
+        double sin_rad = sin(rad);
+        unsigned char last_pixel = 3;
+
+        for (int length = 0; length < max_length; length++)
         {
+            int x = static_cast<int>(center_x + length * cos_rad);
+            int y = static_cast<int>(center_y + length * sin_rad);
+
+            // 检查坐标是否在图像范围内
+            if (x < 0 || x >= image_raw.cols || y < 0 || y >= image_raw.rows)
+            {
+                break; // 超出范围则停止当前射线的扫描
+            }
+
+            // 将图像的每个像素转换为红、蓝、白、灰中最近的颜色
             cv::Vec3b pix = image_raw.at<cv::Vec3b>(y, x);
             int min_idx = 0;
             int min_dist = INT_MAX;
@@ -99,111 +115,47 @@ void imageCallback(const sensor_msgs::ImageConstPtr &msg)
                     min_idx = i;
                 }
             }
+
             // 更新量化后的图像 (用于 image_show)
             image_show.at<cv::Vec3b>(y, x) = COLORS[min_idx];
 
-            // 根据最接近的颜色索引更新掩码
-            switch (min_idx)
+            // 根据最接近的颜色索引，查找对应的边缘
+            double dist = distanceLookup.getDistance(length) * 20;
+            int x2 = static_cast<int>(center_x + dist * cos_rad);
+            int y2 = static_cast<int>(center_y + dist * sin_rad);
+
+            // 畸变校正后记录边缘
+            if (last_pixel != min_idx && (dist > 0 && dist < 150) && (x2 >= 0 && x2 < image_raw.cols && y2 >= 0 && y2 < image_raw.rows))
             {
-            case 0: // White
-                image_white.at<uchar>(y, x) = 255;
-                break;
-            case 1: // Red
-                image_red.at<uchar>(y, x) = 255;
-                break;
-            case 2: // Blue
-                image_blue.at<uchar>(y, x) = 255;
-                break;
-            case 3: // Gray
-                // 不需要更新掩码
-                break;
-            }
-        }
-    }
-
-    int center_x = image_raw.cols / 2;
-    int center_y = image_raw.rows / 2;
-
-    // 用射线扫描白线、红线和蓝线图像
-    for (int angle = 0; angle < 360; angle += 4)
-    {
-        double rad = angle * CV_PI / 180.0;
-        unsigned char last_pixel_white = 0;
-        unsigned char last_pixel_red = 0;
-        unsigned char last_pixel_blue = 0;
-
-        for (int length = 0; length < std::max(image_raw.cols, image_raw.rows); length++)
-        {
-            int x = static_cast<int>(center_x + length * cos(rad));
-            int y = static_cast<int>(center_y + length * sin(rad));
-
-            if (x >= 0 && x < image_white.cols && y >= 0 && y < image_white.rows)
-            {
-                // 检测白线边缘
-                unsigned char pixel_white = image_white.at<uchar>(y, x);
-                if (last_pixel_white == 255 && pixel_white != 255)
+                switch (min_idx)
                 {
+                case 0: // White
                     // 在 image_show 中画紫色十字
                     cv::line(image_show, Point(x - 5, y), Point(x + 5, y), Scalar(255, 0, 255), 1);
                     cv::line(image_show, Point(x, y - 5), Point(x, y + 5), Scalar(255, 0, 255), 1);
                     cv::circle(image_lines, Point(x, y), 2, cv::Scalar(255, 255, 255), -1);
 
-                    // 畸变矫正
-                    double dist = distanceLookup.getDistance(length) * 20;
-                    if (dist > 0 && dist < 150)
-                    {
-                        int x2 = static_cast<int>(center_x + dist * cos(rad));
-                        int y2 = static_cast<int>(center_y + dist * sin(rad));
-                        if (x2 >= 0 && x2 < image_corrected.cols && y2 >= 0 && y2 < image_corrected.rows)
-                            image_corrected.at<uchar>(y2, x2) = 255;
-                    }
-                }
-                last_pixel_white = pixel_white;
-
-                // 检测红线边缘
-                unsigned char pixel_red = image_red.at<uchar>(y, x);
-                if (last_pixel_red != 255 && pixel_red == 255)
-                {
+                    image_corrected.at<uchar>(y2, x2) = 255;
+                    break;
+                case 1: // Red
                     // 在 image_show 中画黄色十字
                     cv::line(image_show, Point(x - 5, y), Point(x + 5, y), Scalar(0, 255, 255), 1);
                     cv::line(image_show, Point(x, y - 5), Point(x, y + 5), Scalar(0, 255, 255), 1);
 
-                    // 畸变矫正
-                    double dist = distanceLookup.getDistance(length) * 20;
-                    if (dist > 0 && dist < 150)
-                    {
-                        int x2 = static_cast<int>(center_x + dist * cos(rad));
-                        int y2 = static_cast<int>(center_y + dist * sin(rad));
-                        if (x2 >= 0 && x2 < image_sideline_red.cols && y2 >= 0 && y2 < image_sideline_red.rows)
-                            image_sideline_red.at<uchar>(y2, x2) = 255;
-                    }
-                }
-                last_pixel_red = pixel_red;
-
-                // 检测蓝线边缘
-                unsigned char pixel_blue = image_blue.at<uchar>(y, x);
-                if (last_pixel_blue != 255 && pixel_blue == 255)
-                {
+                    image_sideline_red.at<uchar>(y2, x2) = 255;
+                    break;
+                case 2: // Blue
                     // 在 image_show 中画浅蓝色十字
                     cv::line(image_show, Point(x - 5, y), Point(x + 5, y), Scalar(255, 255, 0), 1);
                     cv::line(image_show, Point(x, y - 5), Point(x, y + 5), Scalar(255, 255, 0), 1);
 
-                    // 畸变矫正
-                    double dist = distanceLookup.getDistance(length) * 20;
-                    if (dist > 0 && dist < 150)
-                    {
-                        int x2 = static_cast<int>(center_x + dist * cos(rad));
-                        int y2 = static_cast<int>(center_y + dist * sin(rad));
-                        if (x2 >= 0 && x2 < image_sideline_blue.cols && y2 >= 0 && y2 < image_sideline_blue.rows)
-                            image_sideline_blue.at<uchar>(y2, x2) = 255;
-                    }
+                    image_sideline_blue.at<uchar>(y2, x2) = 255;
+                    break;
+                default:
+                    break;
                 }
-                last_pixel_blue = pixel_blue;
             }
-            else
-            {
-                break;
-            }
+            last_pixel = min_idx;
         }
     }
 
