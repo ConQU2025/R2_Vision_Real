@@ -234,16 +234,6 @@ target_link_libraries(hsv_adjust
   ${catkin_LIBRARIES} ${OpenCV_LIBS}
 )
 
-add_executable(localization
-  src/localization.cpp
-  src/utility/distance_lookup.cpp
-  src/utility/lines_map.cpp
-)
-add_dependencies(localization ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
-target_link_libraries(localization
-  ${catkin_LIBRARIES} ${OpenCV_LIBS}
-)
-
 add_executable(load_lines_map
   src/load_lines_map.cpp
   src/utility/lines_map.cpp
