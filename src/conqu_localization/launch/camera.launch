@@ -32,6 +32,15 @@
 
   <!-- [定位方法二] 使用边线辅助场线定位 loc_sidelines 场线定位节点 -->
   <node name="loc_sidelines" pkg="conqu_localization" type="loc_sidelines">
+    <param name="blue_h_min" value="100"/>
+    <param name="blue_h_max" value="145"/>
+    <param name="red_h_min" value="127"/>
+    <!-- <param name="red_h_max" value="3"/> -->
+    <param name="gray_s_threhold" value="70"/>
+    <param name="gray_v_threhold" value="90"/>
+    <param name="white_v_min" value="150"/>
+    <param name="white_v_max" value="180"/>
+
     <param name= "table_file" value="$(find conqu_localization)/config/dist_small" />
     <param name= "lines_file" value="$(find conqu_localization)/config/field_lines.jpg" />
     <param name= "field_file" value="$(find conqu_localization)/config/field_bg.png" />

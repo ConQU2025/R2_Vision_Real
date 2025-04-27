@@ -17,19 +17,20 @@ static LinesMap lines_map;
 static float counter_x = 0;
 static float counter_y = 0;
 static float counter_yaw = 0;
-static cv::Mat field_image;
-static cv::Mat monitor_image;
-static cv::Mat image_lines_all;
-static cv::Mat image_lines_map;
-static cv::Mat image_red_map;
-static cv::Mat image_blue_map;
+static cv::Mat field_image, monitor_image, image_red_map, image_blue_map, image_lines_all, image_lines_map;
 
 const cv::Vec3b COLORS[4] = {
     cv::Vec3b(255, 255, 255), // 白
-    cv::Vec3b(0, 0, 255),     // 红
-    cv::Vec3b(255, 0, 0),     // 蓝
-    cv::Vec3b(128, 128, 128)  // 灰
+    cv::Vec3b(0, 0, 255), // 红
+    cv::Vec3b(255, 0, 0), // 蓝
+    cv::Vec3b(0, 0, 0), // 灰
 };
+
+
+// S值小于GRAY_S_THREHOLD的像素被认为是灰色
+// 灰色像素中，V值大于WHITE_V_THREHOLD的像素被认为是白色
+// 剩余像素H值若属于BLUE_H_MIN和BLUE_H_MAX之间，则是蓝色，否则是红色（CV的H值范围是0~179）
+int blue_h_max, blue_h_min, gray_s_threhold, white_v_min, white_v_max, red_h_max, red_h_min, gray_v_threhold;
 
 void imageCallback(const sensor_msgs::ImageConstPtr &msg)
 {
@@ -57,16 +58,18 @@ void imageCallback(const sensor_msgs::ImageConstPtr &msg)
     // cv::cvtColor(lab_image, image_raw, cv::COLOR_Lab2BGR);
 
     // 2. 去除反光（降低高亮区域V值）
-    cv::Mat hsv_img;
-    cv::cvtColor(image_raw, hsv_img, cv::COLOR_BGR2HSV);
-    std::vector<cv::Mat> hsv_planes;
-    cv::split(hsv_img, hsv_planes);
+    cv::Mat image_hsv;
+    cv::cvtColor(image_raw, image_hsv, cv::COLOR_BGR2HSV);
+    // std::vector<cv::Mat> hsv_planes;
+    // cv::split(image_hsv, hsv_planes);
     // 对高亮区域（V>240）进行抑制
-    cv::Mat mask_reflect;
-    cv::threshold(hsv_planes[2], mask_reflect, 240, 255, cv::THRESH_BINARY);
-    hsv_planes[2].setTo(200, mask_reflect); // 将高亮区域V值降为200
-    cv::merge(hsv_planes, hsv_img);
-    cv::cvtColor(hsv_img, image_raw, cv::COLOR_HSV2BGR);
+    // cv::Mat mask_reflect;
+    // cv::threshold(hsv_planes[2], mask_reflect, reflect_v_threhold, 255, cv::THRESH_BINARY);
+    // hsv_planes[2].setTo(200, mask_reflect); // 将高亮区域V值降为200
+    // cv::merge(hsv_planes, image_hsv);
+    // cv::cvtColor(image_hsv, image_raw, cv::COLOR_HSV2BGR);
+    // cv::adaptiveThreshold(src, dst, 255, cv::ADAPTIVE_THRESH_GAUSSIAN_C, cv::THRESH_BINARY, 11, 2);
+
 
     // 初始化掩码图像和其他图像
     Mat image_show = image_raw.clone();                               // 用于显示原始量化结果
@@ -78,17 +81,19 @@ void imageCallback(const sensor_msgs::ImageConstPtr &msg)
 
     int center_x = image_raw.cols / 2;
     int center_y = image_raw.rows / 2;
-    int max_length = std::max(image_raw.cols, image_raw.rows);
+    // int max_length = std::max(image_raw.cols, image_raw.rows);
 
+    // cv::Mat hsl_img;
+    // cv::cvtColor(image_raw, hsl_img, cv::COLOR_BGR2HLS);
     // 用射线扫描图像
-    for (int angle = 0; angle < 360; angle += 4)
-    {
+    for (int angle = 0; angle < 360; angle += 1)
+    { 
         double rad = angle * CV_PI / 180.0;
         double cos_rad = cos(rad);
         double sin_rad = sin(rad);
         unsigned char last_pixel = 3;
 
-        for (int length = 0; length < max_length; length++)
+        for (int length = 0; length < image_raw.cols / 2; length++)
         {
             int x = static_cast<int>(center_x + length * cos_rad);
             int y = static_cast<int>(center_y + length * sin_rad);
@@ -100,19 +105,48 @@ void imageCallback(const sensor_msgs::ImageConstPtr &msg)
             }
 
             // 将图像的每个像素转换为红、蓝、白、灰中最近的颜色
-            cv::Vec3b pix = image_raw.at<cv::Vec3b>(y, x);
+            // cv::Vec3b pix = image_raw.at<cv::Vec3b>(y, x);
+            // int min_idx = 0;
+            // int min_dist = INT_MAX;
+            // for (int i = 0; i < 4; ++i)
+            // {
+            //     int db = int(pix[0]) - int(COLORS[i][0]);
+            //     int dg = int(pix[1]) - int(COLORS[i][1]);
+            //     int dr = int(pix[2]) - int(COLORS[i][2]);
+            //     int dist = db * db + dg * dg + dr * dr;
+            //     if (dist < min_dist)
+            //     {
+            //         min_dist = dist;
+            //         min_idx = i;
+            //     }
+            // }
             int min_idx = 0;
-            int min_dist = INT_MAX;
-            for (int i = 0; i < 4; ++i)
+            cv::Vec3b pix = image_hsv.at<cv::Vec3b>(y, x);
+
+            if (pix[2] < gray_v_threhold){
+                min_idx = 3;
+            }
+            else if (pix[1] < gray_s_threhold) // S值小于阈值，认为是灰色
             {
-                int db = int(pix[0]) - int(COLORS[i][0]);
-                int dg = int(pix[1]) - int(COLORS[i][1]);
-                int dr = int(pix[2]) - int(COLORS[i][2]);
-                int dist = db * db + dg * dg + dr * dr;
-                if (dist < min_dist)
+                if (pix[2] >= white_v_min && pix[2] <= white_v_max){ // 白色
+                    min_idx = 0;
+                }
+                else // 否则认为是灰色
                 {
-                    min_dist = dist;
-                    min_idx = i;
+                    min_idx = 3;
+                }
+            }
+            else{
+                if (pix[0] >= blue_h_min && pix[0] <= blue_h_max) // 蓝色范围
+                {
+                    min_idx = 2; // 蓝色
+                }
+                else if (pix[2] >= red_h_min) // 红色范围
+                {
+                    min_idx = 1; // 红色
+                }
+                else{
+                    min_idx = 3; // 其他颜色
                 }
             }
 
@@ -477,6 +511,21 @@ int main(int argc, char **argv)
     setlocale(LC_ALL, "");
     ros::init(argc, argv, "loc_sidelines");
     ros::NodeHandle nh("~");
+
+    // int blue_h_max, blue_h_min, gray_s_threhold, white_v_threhold;
+    nh.param<int>("blue_h_max", blue_h_max, 145);         // 290/2
+    nh.param<int>("blue_h_min", blue_h_min, 65);          // 130/2
+    nh.param<int>("red_h_max", red_h_max, 145);         // 290/2
+    nh.param<int>("red_h_min", red_h_min, 65);          // 130/2
+    nh.param<int>("gray_s_threhold", gray_s_threhold, 10);
+    nh.param<int>("gray_v_threhold", gray_v_threhold, 10);
+    nh.param<int>("white_v_min", white_v_min, 200);
+    nh.param<int>("white_v_max", white_v_max, 200);
+
+    // BLUE_H_MAX = static_cast<char>(blue_h_max);
+    // BLUE_H_MIN = static_cast<char>(blue_h_min);
+    // GRAY_S_THREHOLD = static_cast<char>(gray_s_threhold);
+    // WHITE_V_THREHOLD = static_cast<char>(white_v_threhold);
 
     std::string table_file;
     nh.param<std::string>("table_file", table_file, "distances.txt");
