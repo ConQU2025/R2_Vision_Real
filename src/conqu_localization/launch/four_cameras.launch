@@ -1,0 +1,56 @@
+<launch>
+  <!-- these are the arguments you can pass this launch file, for example paused:=true -->
+  <arg name="paused" default="false"/>
+  <arg name="use_sim_time" default="false"/>
+  <arg name="gui" default="true"/>
+  <arg name="headless" default="false"/>
+  <arg name="debug" default="false"/> 
+  <arg name="verbose" default="false"/>
+
+  <node name="four_cameras" pkg="conqu_localization" type="four_cameras" output="screen"/>
+
+    <!-- 调用usb摄像头 -->
+    <node name="usb_cam0" pkg="usb_cam" type="usb_cam_node" output="screen">
+        <param name="video_device" value="/dev/video0" />
+        <param name="image_width" value="640" />
+        <param name="image_height" value="480" />
+        <param name="pixel_format" value="yuyv" />
+        <param name="camera_frame_id" value="usb_cam0" />
+        <!-- <param name="autowhitebalance" value="true" /> -->
+        <param name="io_method" value="mmap"/>
+        <remap from="/usb_cam/image_raw" to="/usb_cam0/image_raw"/>
+    </node>
+
+    <node name="usb_cam1" pkg="usb_cam" type="usb_cam_node" output="screen">
+        <param name="video_device" value="/dev/video2" />
+        <param name="image_width" value="640" />
+        <param name="image_height" value="480" />
+        <param name="pixel_format" value="yuyv" />
+        <param name="camera_frame_id" value="usb_cam1" />
+        <!-- <param name="autowhitebalance" value="true" /> -->
+        <param name="io_method" value="mmap"/>
+        <remap from="/usb_cam/image_raw" to="/usb_cam1/image_raw"/>
+    </node>
+
+    <node name="usb_cam2" pkg="usb_cam" type="usb_cam_node" output="screen">
+        <param name="video_device" value="/dev/video4" />
+        <param name="image_width" value="640" />
+        <param name="image_height" value="480" />
+        <param name="pixel_format" value="yuyv" />
+        <param name="camera_frame_id" value="usb_cam2" />
+        <!-- <param name="autowhitebalance" value="true" /> -->
+        <param name="io_method" value="mmap"/>
+        <remap from="/usb_cam/image_raw" to="/usb_cam2/image_raw"/>
+    </node>
+
+    <!-- <node name="usb_cam_3" pkg="usb_cam" type="usb_cam_node" output="screen">
+        <param name="video_device" value="/dev/video6" />
+        <param name="image_width" value="640" />
+        <param name="image_height" value="480" />
+        <param name="pixel_format" value="yuyv" />
+        <param name="camera_frame_id" value="usb_cam3" />
+        <param name="autowhitebalance" value="true" />
+        <param name="io_method" value="mmap"/>
+        <remap from="/usb_cam/image_raw" to="/usb_cam3/image_raw"/>
+    </node> -->
+</launch>

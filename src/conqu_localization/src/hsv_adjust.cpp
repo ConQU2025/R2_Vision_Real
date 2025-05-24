@@ -62,7 +62,7 @@ int main(int argc, char **argv)
     ros::init(argc, argv, "hsv_adjust");
    
     ros::NodeHandle nh;
-    ros::Subscriber rgb_sub = nh.subscribe("/omni_camera/image_raw", 1 , Cam_RGB_Callback);
+    ros::Subscriber rgb_sub = nh.subscribe("/usb_cam/image_raw", 1 , Cam_RGB_Callback);
 
     ros::Rate loop_rate(30);
 

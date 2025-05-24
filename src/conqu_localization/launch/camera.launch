@@ -25,7 +25,7 @@
 
   <!-- [定位方法一] 只用场线定位 localization 节点-->
   <!--node name="localization" pkg="conqu_localization" type="localization" output="screen">
-    <param name= "table_file" value="$(find conqu_localization)/config/dist_table.txt" />
+    <param name= "table_file" value="$(find conqu_localization)/config/dist_table.txt" /> 
     <param name= "lines_file" value="$(find conqu_localization)/config/field_lines.jpg" />
     <param name= "field_file" value="$(find conqu_localization)/config/field_bg.png" />
   </node-->

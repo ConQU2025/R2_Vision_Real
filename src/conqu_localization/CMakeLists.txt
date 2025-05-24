@@ -254,6 +254,14 @@ target_link_libraries(loc_sidelines
   ${catkin_LIBRARIES} ${OpenCV_LIBS}
 )
 
+add_executable(four_cameras
+  src/four_cameras.cpp
+)
+add_dependencies(four_cameras ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+target_link_libraries(four_cameras
+  ${catkin_LIBRARIES} ${OpenCV_LIBS}
+)
+
 add_executable(relocalization
   src/relocalization.cpp
   src/utility/distance_lookup.cpp
